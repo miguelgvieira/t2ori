@@ -27,7 +27,7 @@ public:
     // A function to search a key in subtree rooted with this node.    
     BTreeNode *search(int k);   // returns NULL if k is not present.
 
-    void save_node();
+    long int save_node();
     void save_node(string name);
 
     BTreeNode read_node(string name);
@@ -35,11 +35,11 @@ public:
     // A utility function to insert a new key in the subtree rooted with
     // this node. The assumption is, the node must be non-full when this
     // function is called
-    void insertNonFull(int k);
+    void insert(int k);
  
     // A utility function to split the child y of this node. i is index of y in
     // child array C[].  The Child y must be full when this function is called
-    void splitChild(int i, BTreeNode *y);
+    void splitChild(int i, string y);
  
 // Make BTree friend of this so that we can access private members of this
 // class in BTree functions
@@ -82,32 +82,27 @@ BTreeNode::BTreeNode(int _t, bool _leaf, bool _root)
  
     // Initialize the number of keys as 0
     n = 0;
-    save_node();
 }
 
 
 BTreeNode::BTreeNode(string name)
 { 
-    // Allocate memory for maximum number of possible keys
-    // and child pointer
- 
     // Initialize the number of keys as 0
     n = 0;
     read_node(name);
 }
 
-void BTreeNode::save_node(){
+long int BTreeNode::save_node(){
     // Salva o nodo em arquivo
-    // printf("ADSASDASd");
     FILE *arq;
+    long int name_node = time(0);   
     if (root == true){
         arq = fopen("root", "wb");
     }
-    else{
-        long int ptr_node = time(0);       
+    else{            
         string Result;        
         ostringstream convert;   
-        convert << ptr_node;     
+        convert << name_node;     
         Result = convert.str(); 
         const char * name = Result.c_str();
         arq = fopen(name, "wb");
@@ -123,7 +118,20 @@ void BTreeNode::save_node(){
         fwrite(&temp, sizeof(int), 1, arq);
     }
     fwrite(&n, sizeof(n), 1, arq);
+    if (n > 0){
+        long int aux;
+        fwrite(&aux, sizeof(long int), 1, arq);
+        C[0] = aux;
+        for (int i = 0; i < n; i++)
+        {
+            int temp=keys[i];
+            fwrite(&temp, sizeof(int), 1, arq);
+            aux = C[i + 1];
+            fwrite(&aux, sizeof(long int), 1, arq);
+        }
+    }
     fclose(arq);
+    return name_node;
 }
 
 void BTreeNode::save_node(string name){
@@ -142,6 +150,21 @@ void BTreeNode::save_node(string name){
         fwrite(&temp, sizeof(int), 1, arq);
     }
     fwrite(&n, sizeof(n), 1, arq);
+
+    fwrite(&n, sizeof(n), 1, arq);
+    if (n > 0){
+        long int aux;
+        fwrite(&aux, sizeof(long int), 1, arq);
+        C[0] = aux;
+        for (int i = 0; i < n; i++)
+        {
+            int temp=keys[i];
+            fwrite(&temp, sizeof(int), 1, arq);
+            aux = C[i + 1];
+            fwrite(&aux, sizeof(long int), 1, arq);
+        }
+    }
+
     fclose(arq);
 }
 
@@ -166,11 +189,11 @@ BTreeNode BTreeNode::read_node(string name){
         C[0] = aux;
         for (int i = 0; i < n; i++)
         {
-            fread(&aux, sizeof(long int), 1, arq);
-            C[i + 1] = aux;
             int temp;
             fread(&temp, sizeof(int), 1, arq);
             keys[i] = temp;
+            fread(&aux, sizeof(long int), 1, arq);
+            C[i + 1] = aux;
         }
     }
 
@@ -233,61 +256,59 @@ BTreeNode *BTreeNode::search(int k)
     convert << C[i];     
     Result = convert.str(); 
     BTreeNode a(Result);
-    a.traverse();
     return a.search(k);
 }
  
 // The main function that inserts a new key in this B-Tree
-void BTreeNode::insert(int k)
-{
-    // If no is root
-    if (root == true)
-    {
-        // Allocate memory for root
-        root = new BTreeNode(t, true);
-        root->keys[0] = k;  // Insert key
-        root->n = 1;  // Update number of keys in root
-    }
-    else // If tree is not empty
-    {
-        // If root is full, then tree grows in height
-        if (root->n == 2*t-1)
-        {
-            // Allocate memory for new root
-            BTreeNode *s = new BTreeNode(t, false);
- 
-            // Make old root as child of new root
-            s->C[0] = root;
- 
-            // Split the old root and move 1 key to the new root
-            s->splitChild(0, root);
- 
-            // New root has two children now.  Decide which of the
-            // two children is going to have new key
-            int i = 0;
-            if (s->keys[0] < k)
-                i++;
-            s->C[i]->insertNonFull(k);
- 
-            // Change root
-            root = s;
-        }
-        else  // If root is not full, call insertNonFull for root
-            root->insertNonFull(k);
-    }
-}
+// void BTreeNode::insert(int k)
+// {
+//     // If root is full, then tree grows in height
+//     if (root->n == 2*t-1)
+//     {
+//         // Allocate memory for new root
+//         BTreeNode *s = new BTreeNode(t, false);
+
+//         // Make old root as child of new root
+//         s->C[0] = root;
+
+//         // Split the old root and move 1 key to the new root
+//         s->splitChild(0, root);
+
+//         // New root has two children now.  Decide which of the
+//         // two children is going to have new key
+//         int i = 0;
+//         if (s->keys[0] < k)
+//             i++;
+//         s->C[i]->insertNonFull(k);
+
+//         // Change root
+//         root = s;
+//     }
+//     else  // If root is not full, call insertNonFull for root
+//         root->insertNonFull(k);
+// }
  
 // A utility function to insert a new key in this node
 // The assumption is, the node must be non-full when this
 // function is called
-void BTreeNode::insertNonFull(int k)
+void BTreeNode::insert(int k)
 {
     // Initialize index as index of rightmost element
     int i = n-1;
  
     // If this is a leaf node
+    printf("%d %d \n", n, t);
     if (leaf == true)
     {
+        // Checks if the node is full
+        if (n<t){
+            // If the child is full, then split it
+            string Result;        
+            ostringstream convert;   
+            convert << C[i+1];     
+            splitChild(i+1, convert.str());
+        }
+        else{
         // The following loop does two things
         // a) Finds the location of new key to be inserted
         // b) Moves all greater keys to one place ahead
@@ -300,6 +321,7 @@ void BTreeNode::insertNonFull(int k)
         // Insert the new key at found location
         keys[i+1] = k;
         n = n+1;
+        }   
     }
     else // If this node is not leaf
     {
@@ -308,10 +330,18 @@ void BTreeNode::insertNonFull(int k)
             i--;
  
         // See if the found child is full
-        if (C[i+1]->n == 2*t-1)
+        string Result;        
+        ostringstream convert;   
+        convert << C[i+1];     
+        Result = convert.str(); 
+        BTreeNode child(Result);
+        if (child.n == 2*t-1)
         {
             // If the child is full, then split it
-            splitChild(i+1, C[i+1]);
+            string Result;        
+            ostringstream convert;   
+            convert << C[i+1];     
+            splitChild(i+1, convert.str());
  
             // After split, the middle key of C[i] goes up and
             // C[i] is splitted into two.  See which of the two
@@ -319,13 +349,17 @@ void BTreeNode::insertNonFull(int k)
             if (keys[i+1] < k)
                 i++;
         }
-        C[i+1]->insertNonFull(k);
+        convert << C[i];     
+        Result = convert.str(); 
+        BTreeNode a(Result);
+        a.insert(k);
     }
+    save_node();
 }
  
 // A utility function to split the child y of this node
 // Note that y must be full when this function is called
-void BTreeNode::splitChild(int i, BTreeNode *y)
+void BTreeNode::splitChild(int i, string y)
 {
     // Create a new node which is going to store (t-1) keys
     // of y
@@ -369,15 +403,15 @@ void BTreeNode::splitChild(int i, BTreeNode *y)
 // Driver program to test above functions
 int main()
 {
-    BTree t(3); // A B-Tree with minium degree 3
+    BTreeNode t(3, true, true); // A B-Tree with minium degree 3
     t.insert(10);
     t.insert(20);
     t.insert(5);
     t.insert(6);
-    t.insert(12);
-    t.insert(30);
-    t.insert(7);
-    t.insert(17);
+    // t.insert(12);
+    // t.insert(30);
+    // t.insert(7);
+    // t.insert(17);
  
     cout << "Traversal of the constucted tree is ";
     t.traverse();
