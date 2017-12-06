@@ -1,3 +1,9 @@
+/*
+O codigo abaixo foi retirado de http://www.geeksforgeeks.org/b-tree-set-3delete/
+*/
+
+
+
 /* The following program performs deletion on a B-Tree. It contains functions
    specific for deletion along with all the other functions provided in the
    previous articles on B-Trees. See http://www.geeksforgeeks.org/b-tree-set-1-introduction-2/
