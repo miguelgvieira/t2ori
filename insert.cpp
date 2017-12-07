@@ -17,9 +17,12 @@ class BTreeNode
     int n;     // Current number of keys
     bool leaf; // Is true when node is leaf. Otherwise false
     bool root; // Verdadeiro quando o nodo for a raiz
+    long int nameNode; // Nome do nodo salvo no HD
 public:
     BTreeNode(int _t, bool _leaf, bool _root);   // Constructor
     BTreeNode(string _name);   // Constructor
+
+    long int get_name();
  
     // A function to traverse all nodes in a subtree rooted with this node
     void traverse();
@@ -92,6 +95,10 @@ BTreeNode::BTreeNode(string name)
     read_node(name);
 }
 
+long int BTreeNode::get_name(){
+    return nameNode;
+}
+
 long int BTreeNode::save_node(){
     // Salva o nodo em arquivo
     FILE *arq;
@@ -105,6 +112,7 @@ long int BTreeNode::save_node(){
         convert << name_node;     
         Result = convert.str(); 
         const char * name = Result.c_str();
+        nameNode = name_node;
         arq = fopen(name, "wb");
     }
     // Salva no formato [ordem, no folha, numero de chaves no no, chaves e ponteiros]
@@ -119,9 +127,8 @@ long int BTreeNode::save_node(){
     }
     fwrite(&n, sizeof(n), 1, arq);
     if (n > 0){
-        long int aux;
+        long int aux = C[0];
         fwrite(&aux, sizeof(long int), 1, arq);
-        C[0] = aux;
         for (int i = 0; i < n; i++)
         {
             int temp=keys[i];
@@ -136,7 +143,6 @@ long int BTreeNode::save_node(){
 
 void BTreeNode::save_node(string name){
     // Salva o nodo em arquivo
-    // printf("ADSASDASd");
     FILE *arq;
     arq = fopen(name.c_str(), "wb");
     // Salva no formato [ordem, no folha, numero de chaves no no, chaves e ponteiros]
@@ -153,9 +159,8 @@ void BTreeNode::save_node(string name){
 
     fwrite(&n, sizeof(n), 1, arq);
     if (n > 0){
-        long int aux;
+        long int aux = C[0];
         fwrite(&aux, sizeof(long int), 1, arq);
-        C[0] = aux;
         for (int i = 0; i < n; i++)
         {
             int temp=keys[i];
@@ -186,18 +191,20 @@ BTreeNode BTreeNode::read_node(string name){
     if (n > 0){
         long int aux;
         fread(&aux, sizeof(long int), 1, arq);
+        cout << "ASDASDASD" << aux << endl;
         C[0] = aux;
         for (int i = 0; i < n; i++)
         {
             int temp;
             fread(&temp, sizeof(int), 1, arq);
+            cout << temp << endl;
             keys[i] = temp;
             fread(&aux, sizeof(long int), 1, arq);
+            cout << aux << endl;
             C[i + 1] = aux;
         }
     }
 
-    printf("%d %d %d", t, leaf, n);
     fclose(arq);
 }
  
@@ -207,6 +214,7 @@ void BTreeNode::traverse()
     // There are n keys and n+1 children, travers through n keys
     // and first n children
     int i;
+    cout << "ASDASD" << C[0] << C[1] << C[2] << endl;
     for (i = 0; i < n; i++)
     {
         // If this is not leaf, then before printing key[i],
@@ -253,7 +261,7 @@ BTreeNode *BTreeNode::search(int k)
     // Go to the appropriate child
     string Result;        
     ostringstream convert;   
-    convert << C[i];     
+    convert << C[i];
     Result = convert.str(); 
     BTreeNode a(Result);
     return a.search(k);
@@ -297,15 +305,14 @@ void BTreeNode::insert(int k)
     int i = n-1;
  
     // If this is a leaf node
-    printf("%d %d \n", n, t);
     if (leaf == true)
     {
         // Checks if the node is full
-        if (n<t){
+        if (n == t){
             // If the child is full, then split it
-            string Result;        
-            ostringstream convert;   
-            convert << C[i+1];     
+            string Result;
+            ostringstream convert;
+            convert << C[i+1];
             splitChild(i+1, convert.str());
         }
         else{
@@ -354,7 +361,17 @@ void BTreeNode::insert(int k)
         BTreeNode a(Result);
         a.insert(k);
     }
-    save_node();
+    if (root == true){
+        string aux = "root";
+        save_node(aux);
+    }
+    else{
+        string aux;        
+        ostringstream convert;  
+        convert << nameNode;     
+        aux = convert.str(); 
+        save_node(aux);
+    }
 }
  
 // A utility function to split the child y of this node
@@ -363,22 +380,21 @@ void BTreeNode::splitChild(int i, string y)
 {
     // Create a new node which is going to store (t-1) keys
     // of y
-    BTreeNode *z = new BTreeNode(y->t, y->leaf);
-    z->n = t - 1;
+    BTreeNode z(t, true, false);
  
     // Copy the last (t-1) keys of y to z
     for (int j = 0; j < t-1; j++)
-        z->keys[j] = y->keys[j+t];
+        z.insert(keys[j + t]);
  
     // Copy the last t children of y to z
-    if (y->leaf == false)
+    if (leaf == false)
     {
         for (int j = 0; j < t; j++)
-            z->C[j] = y->C[j+t];
+            z.C[j] = C[j+t];
     }
  
     // Reduce the number of keys in y
-    y->n = t - 1;
+    n = t - 1;
  
     // Since this node is going to have a new child,
     // create space of new child
@@ -386,7 +402,8 @@ void BTreeNode::splitChild(int i, string y)
         C[j+1] = C[j];
  
     // Link the new child to this node
-    C[i+1] = z;
+    C[i + 1] = z.get_name();
+    cout << "ASDAnomeeee    " << C[0] << endl;
  
     // A key of y will move to this node. Find location of
     // new key and move all greater keys one space ahead
@@ -394,7 +411,7 @@ void BTreeNode::splitChild(int i, string y)
         keys[j+1] = keys[j];
  
     // Copy the middle key of y to this node
-    keys[i] = y->keys[t-1];
+    keys[i] = keys[t-1];
  
     // Increment count of keys in this node
     n = n + 1;
@@ -412,15 +429,19 @@ int main()
     // t.insert(30);
     // t.insert(7);
     // t.insert(17);
+
+    string name = "root";
+    BTreeNode y(name);
  
     cout << "Traversal of the constucted tree is ";
-    t.traverse();
+    y.traverse();
+    cout << endl;
  
-    int k = 6;
-    (t.search(k) != NULL)? cout << "\nPresent" : cout << "\nNot Present";
+    // int k = 6;
+    // (t.search(k) != NULL)? cout << "\nPresent" : cout << "\nNot Present";
  
-    k = 15;
-    (t.search(k) != NULL)? cout << "\nPresent" : cout << "\nNot Present";
+    // k = 15;
+    // (t.search(k) != NULL)? cout << "\nPresent" : cout << "\nNot Present";
  
     return 0;
 }
